@@ -37,6 +37,10 @@ namespace ThunderSuperSpeed
             }
         }
 
+        /// <summary>
+        /// 从资源文件里释放DLL
+        /// </summary>
+        /// <param name="filePath"></param>
         private static void ExtractDll(string filePath)
         {
             FileStream fs = new FileStream(filePath, FileMode.CreateNew, FileAccess.Write);
@@ -54,7 +58,7 @@ namespace ThunderSuperSpeed
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            if (!checkThunderExist()) return;
+            if (!CheckThunderExist()) return;
             Application.Run(new FrmMain());
         }
 
@@ -62,14 +66,14 @@ namespace ThunderSuperSpeed
         /// 检查迅雷是否开启
         /// </summary>
         /// <returns></returns>
-        private static bool checkThunderExist()
+        private static bool CheckThunderExist()
         {
             Process[] temp = Process.GetProcessesByName("Thunder");
             if (temp != null && temp.Length > 0)
             {
                 if (MessageBox.Show("请关闭迅雷后点击确定！", "检测到迅雷正在运行", MessageBoxButtons.OKCancel) == DialogResult.OK)
                 {
-                    return checkThunderExist();
+                    return CheckThunderExist();
                 }
                 else
                 {
