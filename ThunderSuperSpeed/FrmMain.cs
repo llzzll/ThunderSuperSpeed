@@ -25,10 +25,7 @@ namespace ThunderSuperSpeed
         public FrmMain()
         {
             InitializeComponent();
-           
         }
-
-
 
         /// <summary>
         /// 读取注册表获取迅雷数据库文件位置
@@ -37,26 +34,32 @@ namespace ThunderSuperSpeed
         private string GetThunderPath()
         {
             string path = "";
-            RegistryKey curUser = Registry.CurrentUser.OpenSubKey(REGISTY);
-            if (curUser != null)
+            try
             {
-                path = curUser.GetValue("Path").ToString();
-            }
-            if (path.Equals(""))
-            {
-                RegistryKey locMachine = Registry.LocalMachine.OpenSubKey(REGISTY);
-                if (locMachine != null)
+                RegistryKey curUser = Registry.CurrentUser.OpenSubKey(REGISTY);
+                if (curUser != null)
                 {
                     path = curUser.GetValue("Path").ToString();
                 }
-            }
-            if (!path.Equals(""))
-            {
-                if (path.Contains(@"Program\Thunder.exe"))
+                if (path.Equals(""))
                 {
-                    path = path.Substring(0, path.LastIndexOf(@"Program\Thunder.exe"));
+                    RegistryKey locMachine = Registry.LocalMachine.OpenSubKey(REGISTY);
+                    if (locMachine != null)
+                    {
+                        path = curUser.GetValue("Path").ToString();
+                    }
                 }
-                path += @"Profiles\TaskDb.dat";
+                if (!path.Equals(""))
+                {
+                    if (path.Contains(@"Program\Thunder.exe"))
+                    {
+                        path = path.Substring(0, path.LastIndexOf(@"Program\Thunder.exe"));
+                    }
+                    path += @"Profiles\TaskDb.dat";
+                }
+            }catch
+            {
+                return "";
             }
             return path;
         }
@@ -83,8 +86,8 @@ namespace ThunderSuperSpeed
             {
                 try
                 {
-                    int count = SQLiteDAL.DoCrack(dbPath);
-                    MessageBox.Show("破解完成，共处理了" + count + "条数据。");
+                    string count = SQLiteDAL.DoCrack(dbPath);
+                    MessageBox.Show("破解完成，" + count);
                 }
                 catch (Exception ex)
                 {

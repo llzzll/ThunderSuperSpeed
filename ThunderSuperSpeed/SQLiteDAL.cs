@@ -19,30 +19,24 @@ namespace ThunderSuperSpeed
         /// 启动破解
         /// </summary>
         /// <param name="path"></param>
-        public static int DoCrack(string path)
+        public static string DoCrack(string path)
         {
             try
             {
+                // 初始化connection
                 string dbPath = "Data Source =" + path;
                 conn = new SQLiteConnection(dbPath);
                 conn.Open();
 
-                string curTable = "";
-                List<string> tableNames = GetTables();
-                foreach (string tableName in tableNames)
-                {
-                    if (tableName.Contains("superspeed"))
-                    {
-                        curTable = tableName;
-                        break;
-                    }
-                }
+                // 获取高速通道表名
+                string curTable = GetTable();
 
                 if (curTable.Equals(""))
                 {
                     throw new Exception("没有找到可破解的任务。");
                 }
 
+                // 处理表中的数据
                 return UpdateTable(curTable);
             }
             catch (Exception ex)
@@ -63,21 +57,23 @@ namespace ThunderSuperSpeed
         }
 
         /// <summary>
-        /// 获取表名列表
+        /// 获取表名
         /// </summary>
         /// <returns></returns>
-        private static List<string> GetTables()
+        private static string GetTable()
         {
-            List<string> tableNames = new List<string>();
             SQLiteCommand getTables = new SQLiteCommand(SQL_LISTABLE, conn);
             try
             {
                 reader = getTables.ExecuteReader();
                 while (reader.Read())
                 {
-                    tableNames.Add(reader["name"].ToString());
+                    if (reader["name"].ToString().Contains("superspeed"))
+                    {
+                        return reader["name"].ToString();
+                    }
                 }
-                return tableNames;
+                return "";
             }
             catch
             {
@@ -96,9 +92,12 @@ namespace ThunderSuperSpeed
         /// update表中的数据
         /// </summary>
         /// <param name="tableName"></param>
-        private static int UpdateTable(string tableName)
+        private static string UpdateTable(string tableName)
         {
             Dictionary<string, byte[]> dataDic = new Dictionary<string, byte[]>();
+
+            List<string> taskCountList = new List<string>();
+
             SQL_GETLIST = SQL_GETLIST.Replace("@table", tableName);
             SQL_UPDATE = SQL_UPDATE.Replace("@table", tableName);
 
@@ -108,12 +107,25 @@ namespace ThunderSuperSpeed
                 reader = getList.ExecuteReader();
                 while (reader.Read())
                 {
-                    dataDic.Add(reader["rowid"].ToString(), reader["UserData"] as byte[]);
+                    // 读取每一行并获取UserData的值
+                    string data = Encoding.Default.GetString(reader["UserData"] as byte[]);
+                    // 如果值中包含509或者508则替换后转回字节数组放入dic
+                    if (data.Contains("509") || data.Contains("508"))
+                    {
+                        data = data.Replace("509", "0");
+                        data = data.Replace("508", "0");
+                        dataDic.Add(reader["rowid"].ToString(), Encoding.Default.GetBytes(data));
+                        // 根据LocalTaskId计算任务数量
+                        if (!taskCountList.Contains(reader["LocalTaskId"].ToString()))
+                        {
+                            taskCountList.Add(reader["LocalTaskId"].ToString());
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception("没有找到可破解的任务。" + ex.Message);
+                throw new Exception("查找任务失败：" + ex.Message);
             }
             finally
             {
@@ -122,27 +134,21 @@ namespace ThunderSuperSpeed
                     reader.Close();
                 }
             }
-            
-            int count = 0;
+            // 任务数和文件数
+            int taskCount = taskCountList.Count;
+            int fileCount = 0;
+
+            // 新建事务
             SQLiteTransaction trans = conn.BeginTransaction();
             try
             {
                 foreach (KeyValuePair<string, byte[]> pair in dataDic)
                 {
-                    string data = Encoding.Default.GetString(pair.Value);
-                    if (data.Contains("509") || data.Contains("508"))
-                    {
-                        string id = pair.Key;
-
-                        data = data.Replace("509", "0");
-                        data = data.Replace("508", "0");
-
-                        SQLiteCommand cmd = new SQLiteCommand(SQL_UPDATE, conn);
-                        cmd.Transaction = trans;
-                        cmd.Parameters.Add(new SQLiteParameter("@data", Encoding.Default.GetBytes(data)));
-                        cmd.Parameters.Add(new SQLiteParameter("@id", id));
-                        count += cmd.ExecuteNonQuery();
-                    }
+                    SQLiteCommand cmd = new SQLiteCommand(SQL_UPDATE, conn);
+                    cmd.Transaction = trans;
+                    cmd.Parameters.Add(new SQLiteParameter("@data", pair.Value));
+                    cmd.Parameters.Add(new SQLiteParameter("@id", pair.Key));
+                    fileCount += cmd.ExecuteNonQuery();
                 }
                 trans.Commit();
             }
@@ -151,11 +157,11 @@ namespace ThunderSuperSpeed
                 throw new Exception("破解失败！" + ex.Message);
             }
 
-            if (count == 0)
+            if (fileCount == 0)
             {
                 throw new Exception("没有找到可破解的任务。");
             }
-            return count;
+            return "共处理了" + taskCount + "个任务中的" + fileCount + "个文件";
         }
     }
 }
