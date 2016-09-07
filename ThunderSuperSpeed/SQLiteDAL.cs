@@ -110,10 +110,10 @@ namespace ThunderSuperSpeed
                     // 读取每一行并获取UserData的值
                     string data = Encoding.Default.GetString(reader["UserData"] as byte[]);
                     // 如果值中包含509或者508则替换后转回字节数组放入dic
-                    if (data.Contains("509") || data.Contains("508"))
+                    if (data.Contains("\"Result\":509") || data.Contains("\"Result\":508"))
                     {
-                        data = data.Replace("509", "0");
-                        data = data.Replace("508", "0");
+                        data = data.Replace("\"Result\":509", "\"Result\":0");
+                        data = data.Replace("\"Result\":508", "\"Result\":0");
                         dataDic.Add(reader["rowid"].ToString(), Encoding.Default.GetBytes(data));
                         // 根据LocalTaskId计算任务数量
                         if (!taskCountList.Contains(reader["LocalTaskId"].ToString()))
