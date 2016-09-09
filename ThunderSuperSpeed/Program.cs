@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -10,11 +11,26 @@ namespace ThunderSuperSpeed
 {
     static class Program
     {
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetModuleHandle(string name);
+        // 这个函数只能接受ASCII，所以一定要设置CharSet = CharSet.Ansi，不然会失败
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi)]
+        private static extern IntPtr GetProcAddress(IntPtr hmod, string name);
+        private delegate void FarProc();
+
         /// <summary>
         /// 加载程序集加载失败事件
         /// </summary>
         static Program()
         {
+            IntPtr hUser32 = GetModuleHandle("user32.dll");
+            IntPtr SetProcessDPIAware = GetProcAddress(hUser32, "SetProcessDPIAware");
+            if (SetProcessDPIAware != IntPtr.Zero)
+            {
+                FarProc setProcessDpiAware = (FarProc)Marshal.GetDelegateForFunctionPointer(SetProcessDPIAware, typeof(FarProc));
+                setProcessDpiAware();
+            }
+
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
         }
 
